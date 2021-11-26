@@ -2,87 +2,86 @@ precision mediump float;
 
 uniform sampler2D uFbo;
 uniform sampler2D uInitTexture;
+uniform sampler2D uNormals;
+
+uniform vec4 uBurnDirection;
+uniform vec2 uLifeSpan;
 uniform float uDeltaTime;
+uniform float uSpeed;
+uniform float uTime;
+uniform float uNoiseScale;
+uniform float uProgress;
 
 varying vec2 vUv;
 
-float rand(vec2 co){
-    return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+vec3 random3(vec3 c) {
+	float j = 4096.0*sin(dot(c,vec3(17.0, 59.4, 15.0)));
+	vec3 r;
+	r.z = fract(512.0*j);
+	j *= .125;
+	r.x = fract(512.0*j);
+	j *= .125;
+	r.y = fract(512.0*j);
+	return r-0.5;
 }
 
-//	Simplex 3D Noise 
-//	by Ian McEwan, Ashima Arts
-//
-vec4 permute(vec4 x){return mod(((x*34.0)+1.0)*x, 289.0);}
-vec4 taylorInvSqrt(vec4 r){return 1.79284291400159 - 0.85373472095314 * r;}
+const float F3 =  0.3333333;
+const float G3 =  0.1666667;
+float snoise(vec3 p) {
 
-float snoise(vec3 v){ 
-  const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
-  const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
+	vec3 s = floor(p + dot(p, vec3(F3)));
+	vec3 x = p - s + dot(s, vec3(G3));
+	 
+	vec3 e = step(vec3(0.0), x - x.yzx);
+	vec3 i1 = e*(1.0 - e.zxy);
+	vec3 i2 = 1.0 - e.zxy*(1.0 - e);
+	 	
+	vec3 x1 = x - i1 + G3;
+	vec3 x2 = x - i2 + 2.0*G3;
+	vec3 x3 = x - 1.0 + 3.0*G3;
+	 
+	vec4 w, d;
+	 
+	w.x = dot(x, x);
+	w.y = dot(x1, x1);
+	w.z = dot(x2, x2);
+	w.w = dot(x3, x3);
+	 
+	w = max(0.6 - w, 0.0);
+	 
+	d.x = dot(random3(s), x);
+	d.y = dot(random3(s + i1), x1);
+	d.z = dot(random3(s + i2), x2);
+	d.w = dot(random3(s + 1.0), x3);
+	 
+	w *= w;
+	w *= w;
+	d *= w;
+	 
+	return dot(d, vec4(52.0));
+}
 
-// First corner
-  vec3 i  = floor(v + dot(v, C.yyy) );
-  vec3 x0 =   v - i + dot(i, C.xxx) ;
+float snoiseFractal(vec3 m) {
+	return   0.5333333* snoise(m)
+				+0.2666667* snoise(2.0*m)
+				+0.1333333* snoise(4.0*m)
+				+0.0666667* snoise(8.0*m);
+}
 
-// Other corners
-  vec3 g = step(x0.yzx, x0.xyz);
-  vec3 l = 1.0 - g;
-  vec3 i1 = min( g.xyz, l.zxy );
-  vec3 i2 = max( g.xyz, l.zxy );
 
-  //  x0 = x0 - 0. + 0.0 * C 
-  vec3 x1 = x0 - i1 + 1.0 * C.xxx;
-  vec3 x2 = x0 - i2 + 2.0 * C.xxx;
-  vec3 x3 = x0 - 1. + 3.0 * C.xxx;
+vec3 transform(inout vec3 position, vec3 T, vec4 R, vec3 S) {
+    //applies the scale
+  position *= S;
+    //computes the rotation where R is a (vec4) quaternion
+  position += 2.0 * cross(R.xyz, cross(R.xyz, position) + R.w * position);
+    //translates the transformed 'blueprint'
+  position += T;
+    //return the transformed position
+  return position;
+}
 
-// Permutations
-  i = mod(i, 289.0 ); 
-  vec4 p = permute( permute( permute( 
-             i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
-           + i.y + vec4(0.0, i1.y, i2.y, 1.0 )) 
-           + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
-
-// Gradients
-// ( N*N points uniformly over a square, mapped onto an octahedron.)
-  float n_ = 1.0/7.0; // N=7
-  vec3  ns = n_ * D.wyz - D.xzx;
-
-  vec4 j = p - 49.0 * floor(p * ns.z *ns.z);  //  mod(p,N*N)
-
-  vec4 x_ = floor(j * ns.z);
-  vec4 y_ = floor(j - 7.0 * x_ );    // mod(j,N)
-
-  vec4 x = x_ *ns.x + ns.yyyy;
-  vec4 y = y_ *ns.x + ns.yyyy;
-  vec4 h = 1.0 - abs(x) - abs(y);
-
-  vec4 b0 = vec4( x.xy, y.xy );
-  vec4 b1 = vec4( x.zw, y.zw );
-
-  vec4 s0 = floor(b0)*2.0 + 1.0;
-  vec4 s1 = floor(b1)*2.0 + 1.0;
-  vec4 sh = -step(h, vec4(0.0));
-
-  vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
-  vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
-
-  vec3 p0 = vec3(a0.xy,h.x);
-  vec3 p1 = vec3(a0.zw,h.y);
-  vec3 p2 = vec3(a1.xy,h.z);
-  vec3 p3 = vec3(a1.zw,h.w);
-
-//Normalise gradients
-  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
-  p0 *= norm.x;
-  p1 *= norm.y;
-  p2 *= norm.z;
-  p3 *= norm.w;
-
-// Mix final noise value
-  vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
-  m = m * m;
-  return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), 
-                                dot(p2,x2), dot(p3,x3) ) );
+float rand(vec2 co){
+    return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
 vec3 snoiseVec3( vec3 x ){
@@ -96,7 +95,6 @@ vec3 snoiseVec3( vec3 x ){
 }
 
 vec3 curlNoise( vec3 p ){
-  
   const float e = .1;
   vec3 dx = vec3( e   , 0.0 , 0.0 );
   vec3 dy = vec3( 0.0 , e   , 0.0 );
@@ -115,7 +113,6 @@ vec3 curlNoise( vec3 p ){
 
   const float divisor = 1.0 / ( 2.0 * e );
   return normalize( vec3( x , y , z ) * divisor );
-
 }
 
 float remap(float value, float low1, float high1, float low2, float high2) {
@@ -124,19 +121,39 @@ float remap(float value, float low1, float high1, float low2, float high2) {
 
 void main() {
   vec4 data = texture2D(uFbo, vUv);
+  vec3 normalData = texture2D(uNormals, vUv).rgb;
   vec3 initPosition = texture2D(uInitTexture, vUv).rgb;
 
-  float lifeSpan = remap(rand(vUv), 0., 1., 0., 1.);
+  float lifeSpan = remap(rand(vUv), 0., 1., uLifeSpan.x, uLifeSpan.y);
 
-  float lifeTime = data.a + uDeltaTime / lifeSpan;
+
+  vec3 transformedPos = initPosition;
+  transform(transformedPos, vec3(0.), uBurnDirection, vec3(1.));
+  float fragX = transformedPos.x + snoiseFractal(initPosition * 0.3 + 20.) + 0.1;
+  float endSize = 0.5;
+  float edge = smoothstep(uProgress - endSize / 2., uProgress + endSize / 2., fragX);
+  edge = smoothstep(0.4, 0.5, edge) - smoothstep(0.5, 0.6, edge);
+
+  float lifeTime = data.a;
   vec3 position = data.rgb;
 
-  if (lifeTime > 1.) {
-    lifeTime = 0.;
+  if (lifeTime >= 0.) lifeTime = data.a + uDeltaTime / lifeSpan;
+  if (edge > 0.3) lifeTime = 0.;
+
+  if (lifeTime < 0.) {
+
+  } else if (lifeTime > 1.) {
+    lifeTime = -1.;
     position = initPosition;
   } else {
-    vec3 nextDirection = curlNoise(position * 4.);
-    position += nextDirection * 0.005;
+    vec3 p = mix((position * uNoiseScale) + lifeTime * 5., vec3(rand(vUv)), remap(lifeTime, 0., 1., 0.2, 1.));
+    // vec3 p = position * uNoiseScale * remap(lifeTime, 0., 1., 5., 1.) + uTime * 0.5;
+    // vec3 randomDirection = curlNoise(position * uNoiseScale + uTime * 0.5) * 2.;
+    vec3 randomDirection = curlNoise(p) * 2.;
+    float randomInfluence = remap(lifeTime, 0., 3., 0., 1.);
+    vec3 nextDirection = mix(vec3(-1., 1., 0.), randomDirection, randomInfluence);
+    nextDirection = mix(normalData + randomDirection, nextDirection, lifeTime);
+    position += nextDirection * 0.01 * uSpeed;
   }
 
 	gl_FragColor = vec4(position, lifeTime);
