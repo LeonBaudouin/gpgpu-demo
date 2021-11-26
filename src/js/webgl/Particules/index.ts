@@ -54,7 +54,7 @@ export default class Particules extends AbstractObject<MainSceneContext> {
     new GLTFLoader()
       .loadAsync(require('../../../models/500.glb').default)
       .then((gltf: GLTF) => {
-        const mesh = gltf.scene.getObjectByName('final_first') as THREE.Mesh
+        const mesh = gltf.scene.getObjectByName('600_final') as THREE.Mesh
         const { position, normal } = this.genTexture(
           // sphere
           mesh
