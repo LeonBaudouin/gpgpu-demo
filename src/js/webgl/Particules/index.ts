@@ -8,16 +8,23 @@ import particlesFragment from './particles.frag'
 import particlesVertex from './particles.vert'
 import { GLTF, GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
 import { MeshSurfaceSampler } from 'three/examples/jsm/math/MeshSurfaceSampler'
+import remap from '../../utils/math/remap'
+import { FolderApi } from 'tweakpane'
+import observableState from '../../utils/observableState'
 
 export default class Particules extends AbstractObject<MainSceneContext> {
   private gpgpu: GPGPU
 
   private gpgpuShader: THREE.ShaderMaterial
   private particlesShader: THREE.ShaderMaterial
-  private debugPlane: THREE.Mesh
+  private firstStatePlane: THREE.Mesh
+  private secondStatePlane: THREE.Mesh
+  private gui: FolderApi
+  public animate = false
 
-  private amount = 256 * 256
-  private texSize = [256, 256]
+  private amount = 64 * 64
+  private texSize = [64, 64]
+  private params = observableState({ colorToAdd: '#000000' })
 
   constructor(context: MainSceneContext) {
     super(context)
@@ -25,23 +32,59 @@ export default class Particules extends AbstractObject<MainSceneContext> {
     this.setupGPGPU()
     this.setupParticles()
 
-    this.debugPlane = new THREE.Mesh(
+    this.firstStatePlane = new THREE.Mesh(
       new THREE.PlaneBufferGeometry(),
       new THREE.MeshBasicMaterial({ map: new THREE.Texture() })
     )
-    this.debugPlane.visible = false
-    this.output.add(this.debugPlane)
+    this.firstStatePlane.visible = true
+    this.firstStatePlane.position.x = -1
+    this.output.add(this.firstStatePlane)
+
+    this.secondStatePlane = new THREE.Mesh(
+      new THREE.PlaneBufferGeometry(),
+      new THREE.MeshBasicMaterial({ map: new THREE.Texture() })
+    )
+    this.secondStatePlane.visible = true
+    this.secondStatePlane.position.x = 1
+    this.output.add(this.secondStatePlane)
 
     new GLTFLoader().load(
       require('../../../models/500.glb').default,
       (gltf: GLTF) => {
         const texture = this.genTexture(
-          gltf.scene.getObjectByName('final') as THREE.Mesh
+          gltf.scene.getObjectByName('600_final') as THREE.Mesh
         )
         this.gpgpu.updateInitTexture(texture)
-        this.gpgpuShader.uniforms.uInitTexture.value = texture
+        this.gpgpuShader.uniforms.uInitFbo.value = texture
+        this.updateTextures()
       }
     )
+
+    this.output.add(new THREE.AxesHelper(1))
+
+    this.gui = this.context.gui.addFolder({ title: 'GPGPU' })
+    this.gui.addButton({ title: 'Render' }).on('click', this.render)
+    this.gui.addButton({ title: 'Reset' }).on('click', () => {
+      this.gpgpuShader.uniforms.uReset.value = true
+      this.render()
+      this.gpgpuShader.uniforms.uReset.value = false
+    })
+    this.gui.addInput(this, 'animate', { label: 'Animate' })
+    this.gui.addInput(this.particlesShader, 'visible', {
+      label: 'Show Particles',
+    })
+    this.gui.addInput(this.particlesShader.uniforms.uDebugColor, 'value', {
+      label: 'Debug Colors',
+    })
+    this.params.__onChange('colorToAdd', (value) => {
+      this.gpgpuShader.uniforms.uColorToAdd.value.set(value)
+    })
+    this.gui.addInput(this.params, 'colorToAdd', { label: 'Color To Add' })
+    this.gui.addInput(this.gpgpuShader.uniforms.uStepSize, 'value', {
+      label: 'Step Size',
+      min: -0.15,
+      max: 0.15,
+    })
   }
 
   private setupParticles() {
@@ -68,10 +111,12 @@ export default class Particules extends AbstractObject<MainSceneContext> {
       fragmentShader: particlesFragment,
       vertexShader: particlesVertex,
       uniforms: {
-        uSize: { value: 20 },
+        uSize: { value: 40 },
         uFbo: { value: null },
+        uDebugColor: { value: false },
       },
     })
+    this.particlesShader.visible = false
 
     const particles = new THREE.Points(particlesGeometry, this.particlesShader)
     this.output.add(particles)
@@ -86,9 +131,9 @@ export default class Particules extends AbstractObject<MainSceneContext> {
     const positions = new Float32Array(this.amount * 4)
     for (let index = 0; index < this.amount; index++) {
       sampler.sample(position)
-      positions[index * 4 + 0] /* x */ = position.x
-      positions[index * 4 + 1] /* y */ = position.y
-      positions[index * 4 + 2] /* z */ = position.z
+      positions[index * 4 + 0] /* x */ = Math.random()
+      positions[index * 4 + 1] /* y */ = Math.random()
+      positions[index * 4 + 2] /* z */ = Math.random()
       positions[index * 4 + 3] /* w */ = Math.random()
     }
     const texture = new THREE.DataTexture(
@@ -107,8 +152,10 @@ export default class Particules extends AbstractObject<MainSceneContext> {
     this.gpgpuShader = new THREE.ShaderMaterial({
       uniforms: {
         uFbo: { value: null },
-        uDeltaTime: { value: 0 },
-        uInitTexture: { value: null },
+        uInitFbo: { value: null },
+        uColorToAdd: { value: new THREE.Color(0x000000) },
+        uReset: { value: false },
+        uStepSize: { value: 0.1 },
       },
       fragmentShader: gpgpuFragment,
       vertexShader: gpgpuVertex,
@@ -121,12 +168,36 @@ export default class Particules extends AbstractObject<MainSceneContext> {
     })
   }
 
-  public tick(_: number, deltaTime: number) {
-    this.gpgpuShader.uniforms.uDeltaTime.value = deltaTime
+  private updateTextures = () => {
+    ;(this.secondStatePlane.material as THREE.MeshBasicMaterial).map = (
+      this.gpgpu as any
+    ).targetA.texture
+    ;(this.firstStatePlane.material as THREE.MeshBasicMaterial).map = (
+      this.gpgpu as any
+    ).targetB.texture
+    this.particlesShader.uniforms.uFbo.value = (
+      this.gpgpu as any
+    ).targetB.texture
+  }
 
+  private render = () => {
     this.gpgpu.render()
-    ;(this.debugPlane.material as THREE.MeshBasicMaterial).map =
-      this.gpgpu.outputTexture
-    this.particlesShader.uniforms.uFbo.value = this.gpgpu.outputTexture
+    this.updateTextures()
+  }
+
+  private tickValue: number = 0
+  public tick(_: number, deltaTime: number) {
+    if (this.animate) {
+      this.tickValue += deltaTime
+      this.gpgpuShader.uniforms.uStepSize.value =
+        0.01 * Math.cos(this.tickValue / 2)
+      this.params.colorToAdd = `hsl(${remap(
+        Math.cos(this.tickValue),
+        [-1, 1],
+        [0, 360]
+      )}, 100%, 50%)`
+      this.context.gui.refresh()
+      this.render()
+    }
   }
 }

@@ -1,22 +1,27 @@
 import * as THREE from 'three'
-import WindowSize from '../utils/page/WindowSize'
+import { Pane } from 'tweakpane'
 import MainScene from './Scenes/MainScene'
+import * as EssentialsPlugin from '@tweakpane/plugin-essentials'
 
 export default class WebGL {
   private renderer: THREE.WebGLRenderer
   private mainScene: MainScene
 
   private clock: THREE.Clock
+  private gui: Pane
 
   constructor(htmlElement: HTMLCanvasElement) {
     this.clock = new THREE.Clock(true)
+    this.gui = new Pane()
+    this.gui.registerPlugin(EssentialsPlugin)
     this.setupRenderer(htmlElement)
     this.mainScene = new MainScene(this.genContext())
   }
 
-  private genContext = (): WebGLAppContext => ({
+  private genContext = () => ({
     clock: this.clock,
     renderer: this.renderer,
+    gui: this.gui,
   })
 
   private setupRenderer(htmlElement: HTMLCanvasElement) {
@@ -40,7 +45,4 @@ export default class WebGL {
   }
 }
 
-export type WebGLAppContext = {
-  renderer: THREE.WebGLRenderer
-  clock: THREE.Clock
-}
+export type WebGLAppContext = ReturnType<WebGL['genContext']>

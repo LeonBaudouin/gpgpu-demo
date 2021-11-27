@@ -3,6 +3,7 @@ import { WebGLAppContext } from '../..'
 import AbstractObject from '../../abstract/AbstractObject'
 import AbstractObjectWithSize from '../../abstract/AbstractObjectWithSize'
 import Particules from '../../Particules'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 
 export type MainSceneContext = WebGLAppContext & {
   scene: THREE.Scene
@@ -41,11 +42,16 @@ export default class MainScene extends AbstractObjectWithSize {
     )
     this.camera.position.z = 10
     this.onResize(window.innerWidth, window.innerHeight)
+
+    const orbitControls = new OrbitControls(
+      this.camera,
+      this.context.renderer.domElement
+    )
   }
 
   private setObjects() {
     this.scene = new THREE.Scene()
-    this.scene.background = new THREE.Color(0x1f1f1f)
+    this.scene.background = new THREE.Color(0x000000)
     const particles = new Particules(this.genContext())
     this.scene.add(particles.output)
     this.tickingObjects.push(particles)

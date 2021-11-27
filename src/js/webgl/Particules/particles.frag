@@ -1,9 +1,10 @@
-uniform sampler2D uTexture;
+varying vec4 vData;
+uniform bool uDebugColor;
 
 void main() {
-  vec2 uv = vec2(gl_PointCoord.x, 1.0 - gl_PointCoord.y);
 
-  float alpha = texture2D(uTexture, uv).r;
+  vec3 color = vec3(1.);
+  if (uDebugColor) color = vData.rgb;
 
-  gl_FragColor = vec4(vec3(1.), alpha);
+  gl_FragColor = vec4(color, 1.);
 }

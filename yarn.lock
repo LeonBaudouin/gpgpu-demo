@@ -937,6 +937,16 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
+"@tweakpane/core@^1.0.7":
+  version "1.0.7"
+  resolved "https://registry.yarnpkg.com/@tweakpane/core/-/core-1.0.7.tgz#cfb19b0d8475d74681bacc94078ca9c6dd2496a2"
+  integrity sha512-u7xeU9cgxNiL0dOnF+lCg3Ik0qjOOUWWIzuIUqzETyRm8Gsf2GVnz1UBmeWHzIZtS+UdhP+bU1Fgfj4DEx71Mg==
+
+"@tweakpane/plugin-essentials@^0.1.4":
+  version "0.1.4"
+  resolved "https://registry.yarnpkg.com/@tweakpane/plugin-essentials/-/plugin-essentials-0.1.4.tgz#144b54dfe274bb1c161285c358268573e039cb99"
+  integrity sha512-beJWDrTo6a29eh1L5AFsiybsiWL2BFMN+49dwAzccnR7vr6uXy3qxJIZVr3J91KXZwDEg1XZ+ZW301Sz+xTBqw==
+
 "@types/dat.gui@^0.7.7":
   version "0.7.7"
   resolved "https://registry.yarnpkg.com/@types/dat.gui/-/dat.gui-0.7.7.tgz#2125aedfaa190364c5a50b0447858a7e159aea2e"
@@ -5743,6 +5753,11 @@ tslib@^2.0.3:
   version "2.3.0"
   resolved "https://registry.yarnpkg.com/tslib/-/tslib-2.3.0.tgz#803b8cdab3e12ba581a4ca41c8839bbb0dacb09e"
   integrity sha512-N82ooyxVNm6h1riLCoyS9e3fuJ3AMG2zIZs2Gd1ATcSFjSA23Q0fzjjZeh0jbJvWVDZ0cJT8yaNNaaXHzueNjg==
+
+tweakpane@^3.0.6:
+  version "3.0.6"
+  resolved "https://registry.yarnpkg.com/tweakpane/-/tweakpane-3.0.6.tgz#8e440ea71094a85239f32e376e5417b9338d1bdd"
+  integrity sha512-LKl2Hau20bjslDQUB96GdNJLprwwEMkn/B/iN2XjWG+0iOvCBW4XiynTks+RUjU4bXhSI3VLBujKDIsuzDQg4g==
 
 type-check@^0.4.0, type-check@~0.4.0:
   version "0.4.0"

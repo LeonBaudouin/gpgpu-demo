@@ -3,10 +3,14 @@
   "version": "3.0.1",
   "description": "Three template",
   "main": "index.js",
-  "dependencies": {},
+  "dependencies": {
+    "@tweakpane/core": "^1.0.7",
+    "tweakpane": "^3.0.6"
+  },
   "devDependencies": {
     "@babel/core": "^7.12.10",
     "@babel/preset-env": "^7.12.11",
+    "@tweakpane/plugin-essentials": "^0.1.4",
     "@types/dat.gui": "^0.7.7",
     "@types/gsap": "^3.0.0",
     "@types/three": "^0.131.1",
