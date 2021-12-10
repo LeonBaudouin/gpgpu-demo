@@ -56,6 +56,7 @@ export default class WebGL {
       canvas: htmlElement,
       antialias: true,
     })
+    this.renderer.state.setCullFace(THREE.CullFaceNone)
     this.renderer.debug.checkShaderErrors = true
     const resize = () => {
       this.renderer.setSize(window.innerWidth, window.innerHeight)

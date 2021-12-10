@@ -40,7 +40,7 @@ export default class Text extends AbstractObject<MainSceneContext> {
           value: new THREE.Quaternion().setFromEuler(state.rotation),
         },
       },
-      transparent: true,
+      // transparent: true,
       side: THREE.DoubleSide,
     })
 

@@ -10,8 +10,6 @@ import gpgpuFragment from './gpgpu.frag'
 import gpgpuVertex from './gpgpu.vert'
 import particlesFragment from './particles.frag'
 import particlesVertex from './particles.vert'
-import f from 'three/src/renderers/shaders/ShaderChunk/default_fragment.glsl'
-import v from 'three/src/renderers/shaders/ShaderChunk/default_vertex.glsl'
 import Text from './Text'
 import gsap from 'gsap'
 import remap from '../../utils/math/remap'
@@ -126,12 +124,11 @@ export default class Particules extends AbstractObject<MainSceneContext> {
           ),
         },
         uRamp: {
-          value: loader.load(require('../../../textures/ramp.png').default),
+          value: loader.load(require('../../../textures/ramp3.png').default),
         },
       },
       side: THREE.DoubleSide,
-      transparent: true,
-      depthTest: false,
+      // transparent: true,
       // blending: THREE.AdditiveBlending,
       // visible: false,
     })
@@ -140,7 +137,6 @@ export default class Particules extends AbstractObject<MainSceneContext> {
       this.particlesShader,
       this.amount
     )
-    particles.renderOrder = 1
     particles.count = this.amount
 
     geometry.drawRange.count = this.amount
